@@ -17,7 +17,10 @@ import nltk
 nltk.download("punkt")
 
 MODEL = load_model("my_model.h5")
-with open("word_index.json") as f:
+# alternatively, can download each time using keras
+# from tensorflow.keras.dataset import imdb
+# WORD_INDEX = imdb.get_word_index()
+with open("imdb_word_index.json") as f:
     WORD_INDEX = json.load(f)
 NUM_WORDS = 20000
 
