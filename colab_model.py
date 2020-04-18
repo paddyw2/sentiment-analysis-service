@@ -9,6 +9,7 @@ Original file is located at
 From: https://keras.io/examples/imdb_lstm/ with epochs reduced to 3 to speed up training
 """
 import re
+import nltk
 from bs4 import BeautifulSoup
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.keras.models import Sequential
@@ -16,8 +17,9 @@ from tensorflow.keras.layers import Dense, Embedding
 from tensorflow.keras.layers import LSTM
 from tensorflow.keras.datasets import imdb
 
-max_features = 20000
+nltk.download("punkt")
 # cut texts after this number of words (among top max_features most common words)
+max_features = 20000
 maxlen = 80
 batch_size = 32
 
@@ -34,6 +36,21 @@ def preprocess_text(text):
     # Remove excessive whitespace
     processed_text = re.sub(r"\s+", r" ", processed_text)
     return processed_text
+
+
+def convert_text_to_num_seq(text):
+    text_word_list = nltk.word_tokenize(text)
+    num_seq = [1]
+    for word in text_word_list:
+        try:
+            num = word_index[word]
+            num += 3
+        except KeyError:
+            num = 0
+        if num >= max_features:
+            num = 0
+        num_seq.append(num)
+    return num_seq
 
 
 print("Loading data...")
@@ -56,7 +73,8 @@ model.add(Dense(1, activation="sigmoid"))
 # try using different optimizers and different optimizer configs
 model.compile(loss="binary_crossentropy", optimizer="adam", metrics=["accuracy"])
 
-print("Train...")
+print("Training model...")
+# can update epochs up to 15 for more accuracy, but with longer train times
 model.fit(
     x_train, y_train, batch_size=batch_size, epochs=3, validation_data=(x_test, y_test)
 )
@@ -69,14 +87,13 @@ model.save(model_file_name)
 print("Model saved")
 
 
-"""Now the model is trained, we need a way to convert a review to the numerical input the model expects.
+"""Now that the model is trained, we need a way to convert a review to the numerical input the model expects.
 
 1. Get the word index used by the dataset, which is a dictionary that maps strings to numbers
 """
 
 word_index = imdb.get_word_index()
 
-"""Get a sample from the imdb dataset (i.e. x_train[0]) along with it's text version (generated using the method below)"""
 
 """Create a review to numeric array function using the dictionary, plus a increment of 3, as per:
 
@@ -85,35 +102,20 @@ https://datascience.stackexchange.com/a/52128
 and:
 
 https://github.com/keras-team/keras/blob/master/keras/datasets/imdb.py#L14
+
+use function convert_text_to_num_seq defined at the top of the file
 """
 
-import nltk
-
-nltk.download("punkt")
-
-
-def convert_text_to_num_seq(text):
-    text_word_list = nltk.word_tokenize(text)
-    num_seq = [1]
-    for word in text_word_list:
-        try:
-            num = word_index[word]
-            num += 3
-        except KeyError:
-            num = 0
-        if num >= max_features:
-            num = 0
-        num_seq.append(num)
-    return num_seq
+print(convert_text_to_num_seq("test text"))
 
 
 """Test out the model with some example reviews"""
 
-test_review_good = (
+test_review_positive = (
     "i have seen better movies but to be honest this was still pretty great"
 )
-test_review_bad = "i did not really like the movie that much"
-result = model.predict([convert_text_to_num_seq(test_review_good)])
+test_review_negative = "i did not really like the movie that much"
+result = model.predict([convert_text_to_num_seq(test_review_positive)])
 print(result)
 if result[0][0] > 0.5:
     print("Positive")
